@@ -30,7 +30,7 @@ function injectStyles() {
         .yb-table th { font-size: 15px; font-weight: 600; height: 40px; padding: 0 8px; position: sticky; top: 0; cursor: pointer; user-select: none; text-align: left; }
         .yb-table th:hover { color: ${colors.highlight}; }
         .yb-table th.num, .yb-table td.num { text-align: right; width: 110px; white-space: nowrap; }
-        .yb-table td { font-size: 14px; height: 30px; padding: 4px 8px; }
+        .yb-table td { font-size: 14px; height: 30px; padding: 4px 8px 0px 8px; }
         .yb-table td.name { max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .yb-table-spacer { height: 1em; }
         .yb-row-group td { font-size: 15px; font-weight: 600; height: 30px; }
@@ -45,6 +45,8 @@ function injectStyles() {
         .yb-vertical-divider { height: 16px; width: 1px; background-color: rgb(111, 109, 104); margin: 0px 8px;}
         a.yb-cat-link { color: inherit; padding: 4px 0; display: inline-block;}
         a.yb-cat-link:hover { color: ${colors.highlight};  }
+        .yb-row-progress td { padding: 0 8px 8px 8px; height: 8px; }
+        .yb-progress-bar { height: 3px; border-radius: 2px; transition: width 0.3s ease; opacity: 0.7; }
     `;
     document.head.appendChild(s);
 }
@@ -238,6 +240,25 @@ function buildTable(sections, colors) {
                 td.textContent = fmtMoney(val);
             }
             
+            if (cat.budget !== 0) {
+                // Progress bar row if budgeted amount is non-zero
+                const progressRow = tbody.insertRow();
+                progressRow.className = 'yb-row-progress';
+                const progressCell = progressRow.insertCell();
+                progressCell.colSpan = 4;
+                progressCell.className = 'yb-progress-cell';
+                
+                const progressPercentage = cat.budget === 0 ? 0 : Math.min((Math.abs(cat.actual) / Math.abs(cat.budget)) * 100, 100);
+                const isOverBudget = !isIncome && Math.abs(cat.actual) > Math.abs(cat.budget);
+                const barColor = isIncome ? colors.green : (isOverBudget ? colors.red : colors.green);
+                
+                const progressBar = document.createElement('div');
+                progressBar.className = 'yb-progress-bar';
+                progressBar.style.cssText = `width: ${progressPercentage}%; background-color: ${barColor};`;
+                progressCell.appendChild(progressBar);
+            }
+            
+            // Spacer row between categories
             if (idx < cats.length - 1) {
                 const spacerRow = tbody.insertRow();
                 spacerRow.className = 'yb-row-spacer';
