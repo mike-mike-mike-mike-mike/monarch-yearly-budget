@@ -45,6 +45,9 @@ function injectStyles() {
         .yb-vertical-divider { height: 16px; width: 1px; background-color: rgb(111, 109, 104); margin: 0px 8px;}
         a.yb-cat-link { color: inherit; padding: 4px 0; display: inline-block;}
         a.yb-cat-link:hover { color: ${colors.highlight};  }
+        .yb-row-progress td { padding: 0; height: 8px; }
+        .yb-progress-cell { padding: 0 8px 4px 8px; }
+        .yb-progress-bar { height: 3px; border-radius: 2px; transition: width 0.3s ease; opacity: 0.7; }
     `;
     document.head.appendChild(s);
 }
@@ -237,6 +240,22 @@ function buildTable(sections, colors) {
                 if (isRem) td.style.color = remainingColor(rem, isIncome, colors);
                 td.textContent = fmtMoney(val);
             }
+            
+            // Progress bar row
+            const progressRow = tbody.insertRow();
+            progressRow.className = 'yb-row-progress';
+            const progressCell = progressRow.insertCell();
+            progressCell.colSpan = 4;
+            progressCell.className = 'yb-progress-cell';
+            
+            const progressPercentage = cat.budget === 0 ? 0 : Math.min((Math.abs(cat.actual) / Math.abs(cat.budget)) * 100, 100);
+            const isOverBudget = !isIncome && Math.abs(cat.actual) > Math.abs(cat.budget);
+            const barColor = isIncome ? colors.green : (isOverBudget ? colors.red : colors.green);
+            
+            const progressBar = document.createElement('div');
+            progressBar.className = 'yb-progress-bar';
+            progressBar.style.cssText = `width: ${progressPercentage}%; background-color: ${barColor};`;
+            progressCell.appendChild(progressBar);
             
             if (idx < cats.length - 1) {
                 const spacerRow = tbody.insertRow();
