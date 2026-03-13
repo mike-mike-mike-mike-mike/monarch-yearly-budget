@@ -5,7 +5,7 @@
     "description": "Adds an annual budget view to the Monarch Money budget page",
     "content_scripts": [
       {
-        "matches": ["https://app.monarch.com/plan"],
+        "matches": ["https://app.monarch.com/*"],
         "js": ["yearly-budget.js"]
       }
     ],
