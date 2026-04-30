@@ -40,7 +40,7 @@ function injectStyles() {
         .yb-row-cat:hover { background: rgba(50,170,240,0.1); }
         .yb-row-spacer td { padding: 0; height: 2px; }
         .yb-row-subtotal td { font-size: 15px; font-weight: 600; height: 30px; padding: 0 8px; }
-        .yb-toggle-btn { font-size: 14px; padding: 8px 16px; border: 1px solid ${colors.headerBg}; background: ${colors.bg}; color: ${colors.text}; cursor: pointer; border-radius: 4px; }
+        .yb-toggle-btn { font-weight: bold; font-size: 14px; padding: 8px 16px; border: 1px solid ${colors.headerBg}; background: ${colors.bg}; color: ${colors.text}; cursor: pointer; border-radius: 8px; }
         .yb-toggle-btn.active { background: ${colors.monarchOrange}; color: #fff; border-color: ${colors.monarchOrange}; }
         .yb-toggle-btn:hover { opacity: 0.8; }
         .yb-vertical-divider { height: 16px; width: 1px; background-color: rgb(111, 109, 104); margin: 0px 8px;}
