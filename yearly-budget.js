@@ -7,6 +7,7 @@ const state = {
     year: new Date().getFullYear(),
     sortCol: null,  // null = default (section order)
     sortDir: 1,     // 1 = descending by value, -1 = ascending
+    excludeCurrentMonth: localStorage.getItem('yb-excludeCurrentMonth') === 'true' || false,
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -47,6 +48,21 @@ function injectStyles() {
         a.yb-cat-link:hover { color: ${colors.highlight};  }
         .yb-row-progress td { padding: 0 8px 8px 8px; height: 8px; }
         .yb-progress-bar { height: 3px; border-radius: 2px; transition: width 0.3s ease; opacity: 0.7; }
+        .yb-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        .yb-modal { background: ${colors.bg}; color: ${colors.text}; border-radius: 8px; width: 360px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); overflow: hidden; }
+        .yb-modal-header { background: ${colors.headerBg}; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .yb-modal-title { font-size: 16px; font-weight: 600; }
+        .yb-modal-close { background: none; border: none; cursor: pointer; font-size: 18px; color: ${colors.text}; line-height: 1; padding: 0; opacity: 0.7; }
+        .yb-modal-close:hover { opacity: 1; }
+        .yb-modal-body { padding: 20px; }
+        .yb-setting-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+        .yb-setting-label { font-size: 14px; }
+        .yb-switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+        .yb-switch input { opacity: 0; width: 0; height: 0; }
+        .yb-switch-slider { position: absolute; inset: 0; background: ${colors.headerBg}; border-radius: 22px; cursor: pointer; transition: background 0.2s; }
+        .yb-switch-slider:before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: transform 0.2s; }
+        .yb-switch input:checked + .yb-switch-slider { background: ${colors.monarchOrange}; }
+        .yb-switch input:checked + .yb-switch-slider:before { transform: translateX(18px); }
     `;
     document.head.appendChild(s);
 }
@@ -80,9 +96,23 @@ async function fetchBudgetData(year) {
     const curYear = today.getFullYear();
     const pad = n => String(n).padStart(2, '0');
     const startDate = `${year}-01-01`;
-    const endDate = year === curYear
-        ? `${year}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
-        : `${year}-12-31`;
+
+    let endDate;
+    if (year !== curYear) {
+        endDate = `${year}-12-31`;
+    } else if (state.excludeCurrentMonth) {
+        const month = today.getMonth(); // 0-indexed; 0 = January
+        if (month === 0) {
+            // January edge case: go back to previous year's December 31
+            endDate = `${year - 1}-12-31`;
+        } else {
+            // Last day of the previous month
+            const lastDayOfPrevMonth = new Date(year, month, 0);
+            endDate = `${year}-${pad(month)}-${pad(lastDayOfPrevMonth.getDate())}`;
+        }
+    } else {
+        endDate = `${year}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+    }
 
     const query = `query Common_GetJointPlanningData($startDate: Date!, $endDate: Date!) {
         budgetData(startMonth: $startDate, endMonth: $endDate) {
@@ -367,7 +397,9 @@ function buildYearlyView(sections) {
         yearLabel.style.marginRight = '24px';
     }
 
+    appendSettingsButton(nav);
     appendToggleButtons(nav, 1);
+
     header.appendChild(nav);
 
     container.appendChild(header);
@@ -377,11 +409,30 @@ function buildYearlyView(sections) {
     return container;
 }
 
-function appendToggleButtons(parent, activeMode) {
-    // create divider
+function createDivider() {
     const dividerElement = document.createElement('div');
     dividerElement.className = 'yb-vertical-divider';
-    parent.appendChild(dividerElement);
+    return dividerElement;
+}
+
+function appendSettingsButton(parent) {
+    const divider = createDivider();
+    parent.appendChild(divider);
+
+    const colors = getColors();
+    const settingsBtn = document.createElement('button');
+    settingsBtn.className = 'yb-toggle-btn';
+    settingsBtn.setAttribute('aria-label', 'Yearly budget settings');
+    settingsBtn.innerHTML = '<span role="img" class="Icon__MonarchIcon-sc-1ja3cr5-0 jHXrju ButtonIcon-bnt4i8-0 YaRtL monarch-icon"></span><span>Settings</span>';
+    settingsBtn.addEventListener('click', toggleSettings);
+    parent.appendChild(settingsBtn);
+}
+
+
+function appendToggleButtons(parent, activeMode) {
+    // create divider
+    const divider = createDivider();
+    parent.appendChild(divider);
 
     for (const [i, label] of [[0, 'Monthly'], [1, 'Yearly']]) {
         const btn = document.createElement('button');
@@ -390,6 +441,98 @@ function appendToggleButtons(parent, activeMode) {
         btn.addEventListener('click', () => onToggleMode(i));
         parent.appendChild(btn);
     }
+}
+
+// ─── Settings Modal ───────────────────────────────────────────────────────────
+
+function updateSetting(key, value) {
+    localStorage.setItem(key, value);
+    if (key === 'yb-excludeCurrentMonth') state.excludeCurrentMonth = value;
+}
+
+function createSettingsModal() {
+    const colors = getColors();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'yb-modal-overlay';
+    overlay.id = 'yb-settings-modal';
+
+    const modal = document.createElement('div');
+    modal.className = 'yb-modal';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'yb-modal-header';
+    const title = document.createElement('span');
+    title.className = 'yb-modal-title';
+    title.style.color = colors.text;
+    title.textContent = 'Budget Settings';
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'yb-modal-close';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.setAttribute('aria-label', 'Close settings');
+    closeBtn.addEventListener('click', closeSettingsModal);
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+
+    // Body
+    const body = document.createElement('div');
+    body.className = 'yb-modal-body';
+
+    const row = document.createElement('div');
+    row.className = 'yb-setting-row';
+
+    const label = document.createElement('label');
+    label.className = 'yb-setting-label';
+    label.textContent = 'Exclude current month in YTD';
+    label.htmlFor = 'yb-toggle-exclude-month';
+
+    const switchWrap = document.createElement('label');
+    switchWrap.className = 'yb-switch';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = 'yb-toggle-exclude-month';
+    checkbox.checked = state.excludeCurrentMonth;
+    checkbox.addEventListener('change', () => {
+        updateSetting('yb-excludeCurrentMonth', checkbox.checked);
+        closeSettingsModal();
+        showYearlyView();
+    });
+    const slider = document.createElement('span');
+    slider.className = 'yb-switch-slider';
+    switchWrap.appendChild(checkbox);
+    switchWrap.appendChild(slider);
+
+    row.appendChild(label);
+    row.appendChild(switchWrap);
+    body.appendChild(row);
+
+    modal.appendChild(header);
+    modal.appendChild(body);
+    overlay.appendChild(modal);
+
+    // Close on overlay click (outside modal)
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeSettingsModal(); });
+
+    return overlay;
+}
+
+function closeSettingsModal() {
+    document.getElementById('yb-settings-modal')?.remove();
+    document.removeEventListener('keydown', onSettingsEsc);
+}
+
+function onSettingsEsc(e) {
+    if (e.key === 'Escape') closeSettingsModal();
+}
+
+function toggleSettings() {
+    if (document.getElementById('yb-settings-modal')) {
+        closeSettingsModal();
+        return;
+    }
+    document.addEventListener('keydown', onSettingsEsc);
+    document.body.appendChild(createSettingsModal());
 }
 
 // ─── Page Flow ────────────────────────────────────────────────────────────────
