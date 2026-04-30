@@ -63,6 +63,9 @@ function injectStyles() {
         .yb-switch-slider:before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: transform 0.2s; }
         .yb-switch input:checked + .yb-switch-slider { background: ${colors.monarchOrange}; }
         .yb-switch input:checked + .yb-switch-slider:before { transform: translateX(18px); }
+        .yb-modal-footer { padding: 12px 20px 16px; display: flex; justify-content: flex-end; }
+        .yb-modal-save { background: ${colors.monarchOrange}; color: #fff; border: none; border-radius: 4px; padding: 8px 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .yb-modal-save:hover { opacity: 0.85; }
     `;
     document.head.appendChild(s);
 }
@@ -493,11 +496,6 @@ function createSettingsModal() {
     checkbox.type = 'checkbox';
     checkbox.id = 'yb-toggle-exclude-month';
     checkbox.checked = state.excludeCurrentMonth;
-    checkbox.addEventListener('change', () => {
-        updateSetting('yb-excludeCurrentMonth', checkbox.checked);
-        closeSettingsModal();
-        showYearlyView();
-    });
     const slider = document.createElement('span');
     slider.className = 'yb-switch-slider';
     switchWrap.appendChild(checkbox);
@@ -507,8 +505,21 @@ function createSettingsModal() {
     row.appendChild(switchWrap);
     body.appendChild(row);
 
+    const footer = document.createElement('div');
+    footer.className = 'yb-modal-footer';
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'yb-modal-save';
+    saveBtn.textContent = 'Save';
+    saveBtn.addEventListener('click', () => {
+        updateSetting('yb-excludeCurrentMonth', checkbox.checked);
+        closeSettingsModal();
+        showYearlyView();
+    });
+    footer.appendChild(saveBtn);
+
     modal.appendChild(header);
     modal.appendChild(body);
+    modal.appendChild(footer);
     overlay.appendChild(modal);
 
     // Close on overlay click (outside modal)
