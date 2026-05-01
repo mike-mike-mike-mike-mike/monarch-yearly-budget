@@ -8,6 +8,7 @@ const state = {
     sortCol: null,  // null = default (section order)
     sortDir: 1,     // 1 = descending by value, -1 = ascending
     excludeCurrentMonth: localStorage.getItem('yb-excludeCurrentMonth') === 'true' || false,
+    rolling12Months: localStorage.getItem('yb-rolling12Months') === 'true' || false,
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -94,28 +95,32 @@ function getToken() {
     return JSON.parse(JSON.parse(localStorage.getItem('persist:root')).user).token;
 }
 
-async function fetchBudgetData(year) {
+function calculateDateRange(year, excludeCurrentMonth, rolling12Months) {
     const today = new Date();
-    const curYear = today.getFullYear();
+    const currentYear = today.getFullYear();
     const pad = n => String(n).padStart(2, '0');
-    const startDate = `${year}-01-01`;
+    const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-    let endDate;
-    if (year !== curYear) {
-        endDate = `${year}-12-31`;
-    } else if (state.excludeCurrentMonth) {
-        const month = today.getMonth(); // 0-indexed; 0 = January
-        if (month === 0) {
-            // January edge case: go back to previous year's December 31
-            endDate = `${year - 1}-12-31`;
-        } else {
-            // Last day of the previous month
-            const lastDayOfPrevMonth = new Date(year, month, 0);
-            endDate = `${year}-${pad(month)}-${pad(lastDayOfPrevMonth.getDate())}`;
-        }
-    } else {
-        endDate = `${year}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+    // Reference date: last day of prev month if excluding current month, otherwise today
+    const referenceDate = excludeCurrentMonth
+        ? new Date(today.getFullYear(), today.getMonth(), 0)
+        : today;
+
+    if (rolling12Months) {
+        const startDate = new Date(referenceDate);
+        startDate.setFullYear(startDate.getFullYear() - 1);
+        return { startDate: fmt(startDate), endDate: fmt(referenceDate) };
     }
+
+    // Calendar year mode
+    const endDate = year === currentYear
+        ? fmt(referenceDate)
+        : fmt(new Date(year, 11, 31));
+    return { startDate: `${year}-01-01`, endDate };
+}
+
+async function fetchBudgetData(year) {
+    const { startDate, endDate } = calculateDateRange(year, state.excludeCurrentMonth, state.rolling12Months);
 
     const query = `query Common_GetJointPlanningData($startDate: Date!, $endDate: Date!) {
         budgetData(startMonth: $startDate, endMonth: $endDate) {
@@ -369,7 +374,13 @@ function buildYearlyView(sections) {
 
     const title = document.createElement('span');
     title.style.cssText = `font-size:18px; font-weight:500; color:${colors.text}`;
-    title.textContent = (state.year === curYear ? `${state.year} YTD` : state.year) + ' Budget';
+    if (state.rolling12Months) {
+        const { startDate, endDate } = calculateDateRange(state.year, state.excludeCurrentMonth, true);
+        const fmtLabel = iso => { const [y, m, d] = iso.split('-'); return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
+        title.textContent = `${fmtLabel(startDate)} – ${fmtLabel(endDate)} Budget`;
+    } else {
+        title.textContent = (state.year === curYear ? `${state.year} YTD` : state.year) + ' Budget';
+    }
     header.appendChild(title);
 
     const nav = document.createElement('div');
@@ -451,6 +462,7 @@ function appendToggleButtons(parent, activeMode) {
 function updateSetting(key, value) {
     localStorage.setItem(key, value);
     if (key === 'yb-excludeCurrentMonth') state.excludeCurrentMonth = value;
+    if (key === 'yb-rolling12Months') state.rolling12Months = value;
 }
 
 function createSettingsModal() {
@@ -482,28 +494,36 @@ function createSettingsModal() {
     const body = document.createElement('div');
     body.className = 'yb-modal-body';
 
-    const row = document.createElement('div');
-    row.className = 'yb-setting-row';
+    const makeSettingRow = (labelText, inputId, checked) => {
+        const row = document.createElement('div');
+        row.className = 'yb-setting-row';
+        const lbl = document.createElement('label');
+        lbl.className = 'yb-setting-label';
+        lbl.textContent = labelText;
+        lbl.htmlFor = inputId;
+        const switchWrap = document.createElement('label');
+        switchWrap.className = 'yb-switch';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.id = inputId;
+        cb.checked = checked;
+        const slider = document.createElement('span');
+        slider.className = 'yb-switch-slider';
+        switchWrap.appendChild(cb);
+        switchWrap.appendChild(slider);
+        row.appendChild(lbl);
+        row.appendChild(switchWrap);
+        return { row, cb };
+    };
 
-    const label = document.createElement('label');
-    label.className = 'yb-setting-label';
-    label.textContent = 'Exclude current month in YTD';
-    label.htmlFor = 'yb-toggle-exclude-month';
+    const { row: row1, cb: checkboxExcludeCurrent } = makeSettingRow('Exclude current month in YTD', 'yb-toggle-exclude-month', state.excludeCurrentMonth);
+    const { row: row2, cb: checkboxRolling } = makeSettingRow('Use rolling 12-month window', 'yb-toggle-rolling-12', state.rolling12Months);
 
-    const switchWrap = document.createElement('label');
-    switchWrap.className = 'yb-switch';
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.id = 'yb-toggle-exclude-month';
-    checkbox.checked = state.excludeCurrentMonth;
-    const slider = document.createElement('span');
-    slider.className = 'yb-switch-slider';
-    switchWrap.appendChild(checkbox);
-    switchWrap.appendChild(slider);
-
-    row.appendChild(label);
-    row.appendChild(switchWrap);
-    body.appendChild(row);
+    body.appendChild(row1);
+    body.style.display = 'flex';
+    body.style.flexDirection = 'column';
+    body.style.gap = '16px';
+    body.appendChild(row2);
 
     const footer = document.createElement('div');
     footer.className = 'yb-modal-footer';
@@ -511,7 +531,8 @@ function createSettingsModal() {
     saveBtn.className = 'yb-modal-save';
     saveBtn.textContent = 'Save';
     saveBtn.addEventListener('click', () => {
-        updateSetting('yb-excludeCurrentMonth', checkbox.checked);
+        updateSetting('yb-excludeCurrentMonth', checkboxExcludeCurrent.checked);
+        updateSetting('yb-rolling12Months', checkboxRolling.checked);
         closeSettingsModal();
         showYearlyView();
     });
