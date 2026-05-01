@@ -67,6 +67,9 @@ function injectStyles() {
         .yb-modal-footer { padding: 12px 20px 16px; display: flex; justify-content: flex-end; }
         .yb-modal-save { background: ${colors.monarchOrange}; color: #fff; border: none; border-radius: 4px; padding: 8px 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
         .yb-modal-save:hover { opacity: 0.85; }
+        .yb-tooltip { position: relative; display: inline-block; }
+        .yb-tooltip .yb-tooltiptext { visibility: hidden; width: 180px; background-color: #333; color: #fff; text-align: center; padding: 5px 8px; border-radius: 6px; font-size: 12px; position: absolute; z-index: 10000; top: 100%; left: 50%; transform: translateX(-50%); pointer-events: none; }
+        .yb-tooltip:hover .yb-tooltiptext { visibility: visible; }
     `;
     document.head.appendChild(s);
 }
@@ -386,18 +389,22 @@ function buildYearlyView(sections) {
     const nav = document.createElement('div');
     nav.id = 'yb-nav';
 
+    // Year navigation group
+    const yearNav = document.createElement('div');
+    yearNav.style.cssText = 'display:inline-flex; align-items:center; gap:8px;';
+
     const prevBtn = document.createElement('button');
     prevBtn.className = 'yb-nav-btn';
     prevBtn.textContent = '◀';
     prevBtn.style.color = colors.text;
     prevBtn.setAttribute('aria-label', 'Previous year');
-    prevBtn.addEventListener('click', () => { state.year--; saveYear(); showYearlyView(); });
-    nav.appendChild(prevBtn);
 
     const yearLabel = document.createElement('span');
     yearLabel.style.cssText = `font-weight:600; color:${colors.text}`;
     yearLabel.textContent = state.year;
-    nav.appendChild(yearLabel);
+
+    yearNav.appendChild(prevBtn);
+    yearNav.appendChild(yearLabel);
 
     if (state.year < curYear) {
         const nextBtn = document.createElement('button');
@@ -405,10 +412,28 @@ function buildYearlyView(sections) {
         nextBtn.textContent = '▶';
         nextBtn.style.color = colors.text;
         nextBtn.setAttribute('aria-label', 'Next year');
-        nextBtn.addEventListener('click', () => { state.year++; saveYear(); showYearlyView(); });
-        nav.appendChild(nextBtn);
+        if (!state.rolling12Months) {
+            nextBtn.addEventListener('click', () => { state.year++; saveYear(); showYearlyView(); });
+        }
+        yearNav.appendChild(nextBtn);
     } else {
         yearLabel.style.marginRight = '24px';
+    }
+
+    if (state.rolling12Months) {
+        yearNav.style.opacity = '0.3';
+        yearNav.style.cursor = 'not-allowed';
+        const tooltip = document.createElement('div');
+        tooltip.className = 'yb-tooltip';
+        tooltip.appendChild(yearNav);
+        const tip = document.createElement('span');
+        tip.className = 'yb-tooltiptext';
+        tip.textContent = 'Rolling 12-month mode always shows the latest 12 months';
+        tooltip.appendChild(tip);
+        nav.appendChild(tooltip);
+    } else {
+        prevBtn.addEventListener('click', () => { state.year--; saveYear(); showYearlyView(); });
+        nav.appendChild(yearNav);
     }
 
     appendSettingsButton(nav);
