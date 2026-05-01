@@ -12,12 +12,15 @@ A UserScript that adds a **yearly budget view** to the [Monarch Money](https://w
 - **Summary Cards**: At-a-glance totals for Income, Budgeted, Spent, Remaining, and Savings.
 - **Persistent State**: View mode and selected year reset to defaults when navigating to the budget page, but are preserved on page refresh.
 - **Dark Mode Support**: Automatically detects and adapts to Monarch Money's dark mode.
+- **View Settings**: A settings modal (gear icon in the header) exposes optional toggles:
+  - **Exclude current month in YTD**: Calculates YTD through the last completed month only, ignoring the current in-progress month.
+  - **Rolling 12-month window**: Switches from a calendar-year view to a rolling 12-month window ending today (or the last completed month if the above toggle is also enabled). Doesn't currently support any other rolling window lengths or custom date ranges.
 
 ## Usage
 
 1. Navigate to the **Budget** page (Plan section) in Monarch Money.
 2. Click the **"Yearly"** toggle button that appears in the budget header.
-3. Use the **← / →** arrow buttons to navigate between years.
+3. Use the **← / →** arrow buttons to navigate between years (disabled in rolling 12-month mode).
 4. Click **"Monthly"** to return to the standard monthly view.
 
 ## How It Works
