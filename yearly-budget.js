@@ -94,8 +94,15 @@ function getColors() {
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 
+let USERTOKEN = null;
 function getToken() {
-    return JSON.parse(JSON.parse(localStorage.getItem('persist:root')).user).token;
+    if (USERTOKEN) return USERTOKEN;
+    
+    const rootRaw = localStorage.getItem('persist:root');
+    const root = JSON.parse(rootRaw);
+    const user = JSON.parse(root.user);
+    USERTOKEN = user.token;
+    return USERTOKEN;
 }
 
 function calculateDateRange(year, excludeCurrentMonth, rolling12Months) {
@@ -364,14 +371,19 @@ function buildCards(sections, colors) {
     return wrap;
 }
 
-function buildYearlyView(sections) {
+function buildYearlyView(container, sections) {
+    const colors = getColors();
+
+    container.appendChild(buildCards(sections, colors));
+    container.appendChild(buildTable(sections, colors));
+
+    return container;
+}
+
+function buildHeader() {
+    // Header: title on left, year nav + toggles on right
     const colors = getColors();
     const curYear = new Date().getFullYear();
-
-    const container = document.createElement('div');
-    container.id = 'yb-container';
-
-    // Header: title on left, year nav + toggles on right
     const header = document.createElement('div');
     header.id = 'yb-header';
 
@@ -441,11 +453,7 @@ function buildYearlyView(sections) {
 
     header.appendChild(nav);
 
-    container.appendChild(header);
-    container.appendChild(buildCards(sections, colors));
-    container.appendChild(buildTable(sections, colors));
-
-    return container;
+    return header;
 }
 
 function createDivider() {
@@ -619,22 +627,28 @@ async function showYearlyView() {
     const scrollRoot = document.querySelector('[class*="Scroll__Root-sc"]');
     if (!scrollRoot) return;
 
+    const container = document.createElement('div');
+    container.id = 'yb-container';
+    scrollRoot.appendChild(container);
+    
+    const header = buildHeader();
+    container.appendChild(header);
+
     const loading = document.createElement('div');
-    loading.id = 'yb-container';
     loading.style.cssText = 'padding:40px; text-align:center; font-size:15px; font-weight:600';
     loading.textContent = 'Loading yearly budget...';
-    scrollRoot.prepend(loading);
+    container.appendChild(loading);
 
-    let data;
-    try { data = await fetchBudgetData(state.year); }
-    catch { loading.textContent = 'Error loading budget data.'; return; }
+    const data = await fetchBudgetData(state.year);
 
     if (!data?.budgetData || !data?.categoryGroups) {
-        loading.textContent = `No budget data available for ${state.year}.`;
+        loading.textContent = `Error loading budget data.`;
         return;
     }
 
-    loading.replaceWith(buildYearlyView(processData(data)));
+    const sections = processData(data);
+    loading.remove();
+    buildYearlyView(container, sections);
     createThemeObserver();
 }
 
