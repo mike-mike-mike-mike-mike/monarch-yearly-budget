@@ -1,4 +1,6 @@
-const GRAPHQL = 'https://api.monarch.com/graphql';
+const GRAPHQL_URL = 'https://api.monarch.com/graphql';
+const GRAPHQL_CLIENT = 'monarch-core-web-app-graphql';
+const GRAPHQL_VERSION = 'v1.0.2527';
 const CURRENCY = 'USD';
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -94,15 +96,28 @@ function getColors() {
 
 // ─── API ──────────────────────────────────────────────────────────────────────
 
-let USERTOKEN = null;
 function getToken() {
-    if (USERTOKEN) return USERTOKEN;
-    
-    const rootRaw = localStorage.getItem('persist:root');
-    const root = JSON.parse(rootRaw);
-    const user = JSON.parse(root.user);
-    USERTOKEN = user.token;
-    return USERTOKEN;
+    const m = document.cookie.match(new RegExp(/(^|;\s*)csrftoken=([^;]+)/));
+    const userToken = m ? m[2] : null;
+    if(!userToken) {
+        console.error(GRAPHQL_CLIENT,GRAPHQL_VERSION,'X-Csrftoken Error');
+    }
+    return userToken;
+}
+
+async function callGraphQL(data) {
+    const userToken = getToken();
+    if(!userToken) {
+        console.error(GRAPHQL_CLIENT,GRAPHQL_VERSION,'X-Csrftoken Error');return null;
+    }
+
+    return fetch(GRAPHQL_URL, {
+        mode: 'cors',
+        method: 'POST',
+        credentials: 'include',
+        headers: { accept: '*/*','X-Csrftoken': `${userToken}`,'content-type': 'application/json','monarch-client': `${GRAPHQL_CLIENT}`,'monarch-client-version': `${GRAPHQL_VERSION}`},
+        body: JSON.stringify(data)
+    });
 }
 
 function calculateDateRange(year, excludeCurrentMonth, rolling12Months) {
@@ -145,11 +160,7 @@ async function fetchBudgetData(year) {
         }
     }`;
 
-    const res = await fetch(GRAPHQL, {
-        mode: 'cors', method: 'POST',
-        headers: { accept: '*/*', authorization: `Token ${getToken()}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ operationName: 'Common_GetJointPlanningData', variables: { startDate, endDate }, query }),
-    });
+    const res = await callGraphQL({ operationName: 'Common_GetJointPlanningData', variables: { startDate, endDate }, query });
     return (await res.json()).data;
 }
 
