@@ -2,6 +2,10 @@ const GRAPHQL_URL = 'https://api.monarch.com/graphql';
 const GRAPHQL_CLIENT = 'monarch-core-web-app-graphql';
 const GRAPHQL_VERSION = 'v1.0.2527';
 const CURRENCY = 'USD';
+const WindowMode = {
+    CALENDAR_YEAR: 0,
+    ROLLING: 1,
+};
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -10,7 +14,7 @@ const state = {
     sortCol: null,  // null = default (section order)
     sortDir: 1,     // 1 = descending by value, -1 = ascending
     excludeCurrentMonth: localStorage.getItem('yb-excludeCurrentMonth') === 'true' || false,
-    rolling12Months: localStorage.getItem('yb-rolling12Months') === 'true' || false,
+    windowMode: parseInt(localStorage.getItem('yb-windowMode')) || WindowMode.CALENDAR_YEAR,
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -42,6 +46,7 @@ function injectStyles() {
         .yb-row-cat { cursor: pointer; }
         .yb-row-cat:hover { background: rgba(50,170,240,0.1); }
         .yb-row-spacer td { padding: 0; height: 2px; }
+        .yb-horizontal-divider { border-top: 1px solid ${colors.headerBg}; }
         .yb-row-subtotal td { font-size: 15px; font-weight: 600; height: 30px; padding: 0 8px; }
         .yb-toggle-btn { font-weight: bold; font-size: 14px; padding: 8px 16px; border: 1px solid ${colors.headerBg}; background: ${colors.bg}; color: ${colors.text}; cursor: pointer; border-radius: 8px; }
         .yb-toggle-btn.active { background: ${colors.monarchOrange}; color: #fff; border-color: ${colors.monarchOrange}; }
@@ -59,7 +64,12 @@ function injectStyles() {
         .yb-modal-close:hover { opacity: 1; }
         .yb-modal-body { padding: 20px; }
         .yb-setting-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-        .yb-setting-label { font-size: 14px; }
+        .yb-setting-row-column { flex-direction: column; align-items: flex-start; gap: 8px; }
+        .yb-setting-label { font-size: 14px; font-weight: bold; }
+        .yb-setting-subtext { font-size: x-small; color: ${colors.grey}; }
+        .yb-radio-group { display: flex; flex-direction: column; gap: 6px; }
+        .yb-radio-option { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; }
+        .yb-radio-option input[type="radio"] { cursor: pointer; accent-color: orangered; width: 14px; height: 14px; flex-shrink: 0; }
         .yb-switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
         .yb-switch input { opacity: 0; width: 0; height: 0; }
         .yb-switch-slider { position: absolute; inset: 0; background: ${colors.headerBg}; border-radius: 22px; cursor: pointer; transition: background 0.2s; }
@@ -120,7 +130,7 @@ async function callGraphQL(data) {
     });
 }
 
-function calculateDateRange(year, excludeCurrentMonth, rolling12Months) {
+function calculateDateRange(year, excludeCurrentMonth, windowMode) {
     const today = new Date();
     const currentYear = today.getFullYear();
     const pad = n => String(n).padStart(2, '0');
@@ -131,9 +141,10 @@ function calculateDateRange(year, excludeCurrentMonth, rolling12Months) {
         ? new Date(today.getFullYear(), today.getMonth(), 0)
         : today;
 
-    if (rolling12Months) {
+    if (windowMode === WindowMode.ROLLING) {
         const startDate = new Date(referenceDate);
         startDate.setFullYear(startDate.getFullYear() - 1);
+        startDate.setDate(startDate.getDate() + 1); // move to first day of next month to get a clean month range
         return { startDate: fmt(startDate), endDate: fmt(referenceDate) };
     }
 
@@ -145,7 +156,7 @@ function calculateDateRange(year, excludeCurrentMonth, rolling12Months) {
 }
 
 async function fetchBudgetData(year) {
-    const { startDate, endDate } = calculateDateRange(year, state.excludeCurrentMonth, state.rolling12Months);
+    const { startDate, endDate } = calculateDateRange(year, state.excludeCurrentMonth, state.windowMode);
 
     const query = `query Common_GetJointPlanningData($startDate: Date!, $endDate: Date!) {
         budgetData(startMonth: $startDate, endMonth: $endDate) {
@@ -323,7 +334,7 @@ function buildTable(sections, colors) {
                 spacerRow.className = 'yb-row-spacer';
                 const spacerCell = spacerRow.insertCell();
                 spacerCell.colSpan = 4;
-                spacerCell.style.borderTop = `1px solid ${colors.headerBg}`;
+                spacerCell.className = 'yb-horizontal-divider';
             }
         }
 
@@ -400,8 +411,8 @@ function buildHeader() {
 
     const title = document.createElement('span');
     title.style.cssText = `font-size:18px; font-weight:500; color:${colors.text}`;
-    if (state.rolling12Months) {
-        const { startDate, endDate } = calculateDateRange(state.year, state.excludeCurrentMonth, true);
+    if (state.windowMode === WindowMode.ROLLING) {
+        const { startDate, endDate } = calculateDateRange(state.year, state.excludeCurrentMonth, WindowMode.ROLLING);
         const fmtLabel = iso => { const [y, m, d] = iso.split('-'); return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
         title.textContent = `${fmtLabel(startDate)} – ${fmtLabel(endDate)} Budget`;
     } else {
@@ -435,7 +446,7 @@ function buildHeader() {
         nextBtn.textContent = '▶';
         nextBtn.style.color = colors.text;
         nextBtn.setAttribute('aria-label', 'Next year');
-        if (!state.rolling12Months) {
+        if (state.windowMode !== WindowMode.ROLLING) {
             nextBtn.addEventListener('click', () => { state.year++; saveYear(); showYearlyView(); });
         }
         yearNav.appendChild(nextBtn);
@@ -443,7 +454,7 @@ function buildHeader() {
         yearLabel.style.marginRight = '24px';
     }
 
-    if (state.rolling12Months) {
+    if (state.windowMode === WindowMode.ROLLING) {
         yearNav.style.opacity = '0.3';
         yearNav.style.cursor = 'not-allowed';
         const tooltip = document.createElement('div');
@@ -467,21 +478,27 @@ function buildHeader() {
     return header;
 }
 
-function createDivider() {
+function createVerticalDivider() {
     const dividerElement = document.createElement('div');
     dividerElement.className = 'yb-vertical-divider';
     return dividerElement;
 }
 
+function createHorizontalDivider() {
+    const dividerElement = document.createElement('div');
+    dividerElement.className = 'yb-horizontal-divider';
+    return dividerElement;
+}
+
 function appendSettingsButton(parent) {
-    const divider = createDivider();
+    const divider = createVerticalDivider();
     parent.appendChild(divider);
 
     const colors = getColors();
     const settingsBtn = document.createElement('button');
     settingsBtn.className = 'yb-toggle-btn';
-    settingsBtn.setAttribute('aria-label', 'Yearly budget settings');
-    settingsBtn.innerHTML = '<span role="img" class="Icon__MonarchIcon-sc-1ja3cr5-0 jHXrju ButtonIcon-bnt4i8-0 YaRtL monarch-icon"></span><span>Settings</span>';
+    settingsBtn.setAttribute('aria-label', 'Annual budget settings');
+    settingsBtn.innerHTML = '<span role="img" class="Icon__MonarchIcon-sc-1ja3cr5-0 bBsWwa ButtonIcon-bnt4i8-0 YaRtL monarch-icon"></span><span>Settings</span>';
     settingsBtn.addEventListener('click', toggleSettings);
     parent.appendChild(settingsBtn);
 }
@@ -489,7 +506,7 @@ function appendSettingsButton(parent) {
 
 function appendToggleButtons(parent, activeMode) {
     // create divider
-    const divider = createDivider();
+    const divider = createVerticalDivider();
     parent.appendChild(divider);
 
     for (const [i, label] of [[0, 'Monthly'], [1, 'Yearly']]) {
@@ -506,7 +523,7 @@ function appendToggleButtons(parent, activeMode) {
 function updateSetting(key, value) {
     localStorage.setItem(key, value);
     if (key === 'yb-excludeCurrentMonth') state.excludeCurrentMonth = value;
-    if (key === 'yb-rolling12Months') state.rolling12Months = value;
+    if (key === 'yb-windowMode') state.windowMode = parseInt(value);
 }
 
 function createSettingsModal() {
@@ -525,7 +542,7 @@ function createSettingsModal() {
     const title = document.createElement('span');
     title.className = 'yb-modal-title';
     title.style.color = colors.text;
-    title.textContent = 'Budget Settings';
+    title.textContent = 'Annual Budget Settings';
     const closeBtn = document.createElement('button');
     closeBtn.className = 'yb-modal-close';
     closeBtn.innerHTML = '&times;';
@@ -538,13 +555,21 @@ function createSettingsModal() {
     const body = document.createElement('div');
     body.className = 'yb-modal-body';
 
-    const makeSettingRow = (labelText, inputId, checked) => {
+    const makeSettingToggleRow = (labelText, inputId, checked, subtext = null) => {
         const row = document.createElement('div');
         row.className = 'yb-setting-row';
+        const labelWrap = document.createElement('div');
         const lbl = document.createElement('label');
         lbl.className = 'yb-setting-label';
         lbl.textContent = labelText;
         lbl.htmlFor = inputId;
+        labelWrap.appendChild(lbl);
+        if (subtext) {
+            const sub = document.createElement('div');
+            sub.className = 'yb-setting-subtext';
+            sub.textContent = subtext;
+            labelWrap.appendChild(sub);
+        }
         const switchWrap = document.createElement('label');
         switchWrap.className = 'yb-switch';
         const cb = document.createElement('input');
@@ -555,19 +580,53 @@ function createSettingsModal() {
         slider.className = 'yb-switch-slider';
         switchWrap.appendChild(cb);
         switchWrap.appendChild(slider);
-        row.appendChild(lbl);
+        row.appendChild(labelWrap);
         row.appendChild(switchWrap);
         return { row, cb };
     };
 
-    const { row: row1, cb: checkboxExcludeCurrent } = makeSettingRow('Exclude current month in YTD', 'yb-toggle-exclude-month', state.excludeCurrentMonth);
-    const { row: row2, cb: checkboxRolling } = makeSettingRow('Use rolling 12-month window', 'yb-toggle-rolling-12', state.rolling12Months);
+    const makeSettingRadioRow = (labelText, name, options, selectedValue) => {
+        const row = document.createElement('div');
+        row.className = 'yb-setting-row yb-setting-row-column';
+        const lbl = document.createElement('span');
+        lbl.className = 'yb-setting-label';
+        lbl.textContent = labelText;
+        const radioGroup = document.createElement('div');
+        radioGroup.className = 'yb-radio-group';
+        const radios = options.map(([optLabel, value]) => {
+            const optRow = document.createElement('label');
+            optRow.className = 'yb-radio-option';
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = name;
+            radio.value = value;
+            radio.checked = selectedValue === value;
+            const span = document.createElement('span');
+            span.textContent = optLabel;
+            optRow.appendChild(radio);
+            optRow.appendChild(span);
+            radioGroup.appendChild(optRow);
+            return radio;
+        });
+        row.appendChild(lbl);
+        row.appendChild(radioGroup);
+        return { row, radios };
+    };
 
-    body.appendChild(row1);
+    const { row: windowModeRow, radios: [radioCalendar, radioRolling] } = makeSettingRadioRow(
+        'Window Type',
+        'yb-window-mode',
+        [['Calendar year', WindowMode.CALENDAR_YEAR], ['Rolling 12 months', WindowMode.ROLLING]],
+        state.windowMode
+    );
+    const { row: excludeCurrentRow, cb: checkboxExcludeCurrent } = makeSettingToggleRow('Exclude current month', 'yb-toggle-exclude-month', state.excludeCurrentMonth, 'Only include budget/actual from completed months');
+
     body.style.display = 'flex';
     body.style.flexDirection = 'column';
     body.style.gap = '16px';
-    body.appendChild(row2);
+    body.appendChild(windowModeRow);
+    body.appendChild(createHorizontalDivider());
+    body.appendChild(excludeCurrentRow);
 
     const footer = document.createElement('div');
     footer.className = 'yb-modal-footer';
@@ -576,7 +635,7 @@ function createSettingsModal() {
     saveBtn.textContent = 'Save';
     saveBtn.addEventListener('click', () => {
         updateSetting('yb-excludeCurrentMonth', checkboxExcludeCurrent.checked);
-        updateSetting('yb-rolling12Months', checkboxRolling.checked);
+        updateSetting('yb-windowMode', radioRolling.checked ? WindowMode.ROLLING : WindowMode.CALENDAR_YEAR);
         closeSettingsModal();
         showYearlyView();
     });
