@@ -170,9 +170,13 @@ async function fetchBudgetData(year) {
                 category { id }
                 monthlyAmounts { plannedCashFlowAmount actualAmount }
             }
+            monthlyAmountsByCategoryGroup {
+                categoryGroup { id }
+                monthlyAmounts { plannedCashFlowAmount actualAmount }
+            }
         }
         categoryGroups {
-            id name order type
+            id name order type budgetVariability groupLevelBudgetingEnabled
             categories { id name icon order budgetVariability }
         }
     }`;
@@ -195,26 +199,60 @@ function processData({ budgetData, categoryGroups }) {
     for (const group of categoryGroups) {
         if (group.type === 'transfer') continue;
         for (const cat of group.categories) {
-            catInfo[cat.id] = { ...cat, groupType: group.type };
+            catInfo[cat.id] = { ...cat, groupType: group.type, groupLevelBudgetingEnabled: group.groupLevelBudgetingEnabled };
         }
     }
 
-    const byId = {};
-    for (const { category, monthlyAmounts } of budgetData.monthlyAmountsByCategory) {
-        const info = catInfo[category.id];
-        if (!info) continue;
+    // Build lookup from group ID → monthly amounts for group-level-budgeted groups
+    const groupAmounts = {};
+    for (const { categoryGroup, monthlyAmounts } of (budgetData.monthlyAmountsByCategoryGroup || [])) {
+        groupAmounts[categoryGroup.id] = monthlyAmounts;
+    }
+
+    const entries = {};
+
+    // One rolled-up entry per group-level-budgeted group
+    for (const group of categoryGroups) {
+        if (group.type === 'transfer' || !group.groupLevelBudgetingEnabled) continue;
+        const monthlyAmounts = groupAmounts[group.id] || [];
         const budget = monthlyAmounts.reduce((s, m) => s + (m.plannedCashFlowAmount || 0), 0);
         const actual = monthlyAmounts.reduce((s, m) => s + (m.actualAmount || 0), 0);
         if (budget === 0 && actual === 0) continue;
-        byId[category.id] = { ...info, budget, actual };
+        entries[`group-${group.id}`] = {
+            id: group.id,
+            name: group.name,
+            icon: '📁',
+            groupType: group.type,
+            budgetVariability: group.budgetVariability,
+            kind: 'group',
+            linkPath: `/category-groups/${group.id}`,
+            budget,
+            actual,
+        };
+    }
+
+    // Per-category entries, skipping categories in group-level-budgeted groups
+    for (const { category, monthlyAmounts } of budgetData.monthlyAmountsByCategory) {
+        const info = catInfo[category.id];
+        if (!info || info.groupLevelBudgetingEnabled) continue;
+        const budget = monthlyAmounts.reduce((s, m) => s + (m.plannedCashFlowAmount || 0), 0);
+        const actual = monthlyAmounts.reduce((s, m) => s + (m.actualAmount || 0), 0);
+        if (budget === 0 && actual === 0) continue;
+        entries[category.id] = {
+            ...info,
+            kind: 'category',
+            linkPath: `/categories/${category.id}`,
+            budget,
+            actual,
+        };
     }
 
     return SECTIONS.map(sec => ({
         ...sec,
-        categories: Object.values(byId).filter(c =>
+        categories: Object.values(entries).filter(e =>
             sec.type === 'income'
-                ? c.groupType === 'income'
-                : c.groupType !== 'income' && c.budgetVariability === sec.variability
+                ? e.groupType === 'income'
+                : e.groupType !== 'income' && e.budgetVariability === sec.variability
         ),
     }));
 }
@@ -305,7 +343,7 @@ function buildTable(sections, colors) {
             nameCell.className = 'name';
             const link = document.createElement('a');
             link.className = 'yb-cat-link';
-            link.href = `/categories/${cat.id}?date=${state.year}-01-01&timeframe=year`;
+            link.href = `${cat.linkPath}?date=${state.year}-01-01&timeframe=year`;
             link.textContent = `${cat.icon || ''} ${cat.name}`;
             nameCell.appendChild(link);
 
@@ -422,7 +460,8 @@ function buildHeader() {
         const fmtLabel = iso => { const [y, m, d] = iso.split('-'); return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
         title.textContent = `${fmtLabel(startDate)} – ${fmtLabel(endDate)} Budget`;
     } else {
-        title.textContent = (state.year === curYear ? `${state.year} YTD` : state.year) + ' Budget';
+        const ytd = state.year === curYear && state.useYtdBudgetForCurrentYear;
+        title.textContent = `${state.year}${ytd ? ' YTD' : ''} Budget`;
     }
     header.appendChild(title);
 
