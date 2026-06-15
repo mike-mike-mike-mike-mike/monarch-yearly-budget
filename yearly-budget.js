@@ -15,6 +15,7 @@ const state = {
     sortDir: 1,     // 1 = descending by value, -1 = ascending
     excludeCurrentMonth: localStorage.getItem('yb-excludeCurrentMonth') === 'true' || false,
     windowMode: parseInt(localStorage.getItem('yb-windowMode')) || WindowMode.CALENDAR_YEAR,
+    useYtdBudgetForCurrentYear: localStorage.getItem('yb-useYtdBudgetForCurrentYear') === 'true' || true,
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -130,18 +131,18 @@ async function callGraphQL(data) {
     });
 }
 
-function calculateDateRange(year, excludeCurrentMonth, windowMode) {
+function calculateDateRange(year) {
     const today = new Date();
     const currentYear = today.getFullYear();
     const pad = n => String(n).padStart(2, '0');
     const fmt = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
     // Reference date: last day of prev month if excluding current month, otherwise today
-    const referenceDate = excludeCurrentMonth
+    const referenceDate = state.excludeCurrentMonth
         ? new Date(today.getFullYear(), today.getMonth(), 0)
         : today;
 
-    if (windowMode === WindowMode.ROLLING) {
+    if (state.windowMode === WindowMode.ROLLING) {
         const startDate = new Date(referenceDate);
         startDate.setFullYear(startDate.getFullYear() - 1);
         startDate.setDate(startDate.getDate() + 1); // move to first day of next month to get a clean month range
@@ -149,14 +150,19 @@ function calculateDateRange(year, excludeCurrentMonth, windowMode) {
     }
 
     // Calendar year mode
-    const endDate = year === currentYear
-        ? fmt(referenceDate)
-        : fmt(new Date(year, 11, 31));
-    return { startDate: `${year}-01-01`, endDate };
+    if (year === currentYear) {
+        // viewing current year
+        const endDate = state.useYtdBudgetForCurrentYear
+            ? fmt(referenceDate)
+            : fmt(new Date(year, 11, 31));
+        return { startDate: `${year}-01-01`, endDate };
+    } else {
+        return { startDate: `${year}-01-01`, endDate: `${year}-12-31` };
+    }
 }
 
 async function fetchBudgetData(year) {
-    const { startDate, endDate } = calculateDateRange(year, state.excludeCurrentMonth, state.windowMode);
+    const { startDate, endDate } = calculateDateRange(year);
 
     const query = `query Common_GetJointPlanningData($startDate: Date!, $endDate: Date!) {
         budgetData(startMonth: $startDate, endMonth: $endDate) {
@@ -412,7 +418,7 @@ function buildHeader() {
     const title = document.createElement('span');
     title.style.cssText = `font-size:18px; font-weight:500; color:${colors.text}`;
     if (state.windowMode === WindowMode.ROLLING) {
-        const { startDate, endDate } = calculateDateRange(state.year, state.excludeCurrentMonth, WindowMode.ROLLING);
+        const { startDate, endDate } = calculateDateRange(state.year);
         const fmtLabel = iso => { const [y, m, d] = iso.split('-'); return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
         title.textContent = `${fmtLabel(startDate)} – ${fmtLabel(endDate)} Budget`;
     } else {
@@ -524,6 +530,7 @@ function updateSetting(key, value) {
     localStorage.setItem(key, value);
     if (key === 'yb-excludeCurrentMonth') state.excludeCurrentMonth = value;
     if (key === 'yb-windowMode') state.windowMode = parseInt(value);
+    if (key === 'yb-useYtdBudgetForCurrentYear') state.useYtdBudgetForCurrentYear = value;
 }
 
 function createSettingsModal() {
@@ -619,13 +626,15 @@ function createSettingsModal() {
         [['Calendar year', WindowMode.CALENDAR_YEAR], ['Rolling 12 months', WindowMode.ROLLING]],
         state.windowMode
     );
-    const { row: excludeCurrentRow, cb: checkboxExcludeCurrent } = makeSettingToggleRow('Exclude current month', 'yb-toggle-exclude-month', state.excludeCurrentMonth, 'Only include budget/actual from completed months');
+    const { row: ytdBudgetRow, cb: checkboxYtdBudget } = makeSettingToggleRow('Use YTD budget', 'yb-toggle-total-budget', state.useYtdBudgetForCurrentYear, 'Only include budget amounts YTD for the current year (Calendar year view only)');
+    const { row: excludeCurrentRow, cb: checkboxExcludeCurrent } = makeSettingToggleRow('Exclude current month', 'yb-toggle-exclude-month', state.excludeCurrentMonth, 'Only include budget/actual from completed months (YTD view only)');
 
     body.style.display = 'flex';
     body.style.flexDirection = 'column';
     body.style.gap = '16px';
     body.appendChild(windowModeRow);
     body.appendChild(createHorizontalDivider());
+    body.appendChild(ytdBudgetRow);
     body.appendChild(excludeCurrentRow);
 
     const footer = document.createElement('div');
@@ -636,6 +645,7 @@ function createSettingsModal() {
     saveBtn.addEventListener('click', () => {
         updateSetting('yb-excludeCurrentMonth', checkboxExcludeCurrent.checked);
         updateSetting('yb-windowMode', radioRolling.checked ? WindowMode.ROLLING : WindowMode.CALENDAR_YEAR);
+        updateSetting('yb-useYtdBudgetForCurrentYear', checkboxYtdBudget.checked);
         closeSettingsModal();
         showYearlyView();
     });
