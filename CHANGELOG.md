@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.2.0] - 2026-06-15
+
+### Added
+- **Group-level budgets**: Group-level budgets now display in the table as a single rolled-up row showing the group total. (Per-category breakdown within groups is not yet supported.)
+- **Full year budget setting**: New "Use YTD budget" toggle in settings to compare spending against the prorated YTD budget (default) or the full annual budget. Applies to calendar year view only.
+
+### Changed
+- **Window mode select**: The rolling 12-month toggle has been replaced with a "Window mode" radio selector (Calendar year / Rolling 12 months), making the active mode clearer and making it easier to scope other settings to a specific mode.
+
 ## [1.1.1] - 2026-05-18
 
 ### Fixed

@@ -7,14 +7,17 @@ A UserScript that adds a **yearly budget view** to the [Monarch Money](https://w
 - **Toggle Between Views**: Switch between the standard monthly budget view and the yearly view using toggle buttons in the budget header.
 - **Year Navigation**: Navigate between years using previous/next arrow controls.
 - **Annualized Totals**: See total Budget, Actual spending, and Remaining budget for each category across all months in the selected year.
-- **YTD for Current Year**: The current year displays year-to-date data; previous years show the full year.
+- **YTD for Current Year**: The current year displays year-to-date data by default - see **View Settings**.
 - **Organized Categories**: Categories are grouped the same way as the standard budget view (Income, Fixed Expenses, Flexible Expenses, Non-Monthly Expenses) and can be sorted by any column.
+- **Group-level Budgets**: Budget groups with a group-level budget are shown as a single rolled-up row displaying the group total.
+  - Support for viewing the individual categories within a group is planned for a future update.
 - **Summary Cards**: At-a-glance totals for Income, Budgeted, Spent, Remaining, and Savings.
 - **Persistent State**: View mode and selected year reset to defaults when navigating to the budget page, but are preserved on page refresh.
 - **Dark Mode Support**: Automatically detects and adapts to Monarch Money's dark mode.
-- **View Settings**: A settings modal (gear icon in the header) exposes optional toggles:
-  - **Exclude current month in YTD**: Calculates YTD through the last completed month only, ignoring the current in-progress month.
-  - **Rolling 12-month window**: Switches from a calendar-year view to a rolling 12-month window ending today (or the last completed month if the above toggle is also enabled). Doesn't currently support any other rolling window lengths or custom date ranges.
+- **View Settings**: A settings modal (gear icon in the header) exposes options:
+  - **Window mode**: Choose between "Calendar year" (default) and "Rolling 12 months". Rolling mode switches to a 12-month window ending today, or the last completed month if "Exclude current month" is also enabled.
+  - **Use YTD budget** *(Calendar year only)*: When enabled (default), budget amounts for the current year are calculated only from months up to the current date. Disable to compare spending against the full annual budget.
+  - **Exclude current month** *(YTD view only)*: Calculates YTD through the last completed month only, ignoring the current in-progress month.
 
 ## Usage
 
