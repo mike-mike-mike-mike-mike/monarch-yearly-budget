@@ -174,6 +174,9 @@ async function fetchBudgetData(year) {
                 categoryGroup { id }
                 monthlyAmounts { plannedCashFlowAmount actualAmount }
             }
+            monthlyAmountsForFlexExpense {
+                monthlyAmounts { plannedCashFlowAmount actualAmount }
+            }
         }
         categoryGroups {
             id name order type budgetVariability groupLevelBudgetingEnabled
@@ -247,8 +250,16 @@ function processData({ budgetData, categoryGroups }) {
         };
     }
 
+    const flexMonthlyAmounts = budgetData.monthlyAmountsForFlexExpense?.monthlyAmounts ?? [];
+    const flexSectionBudget = flexMonthlyAmounts.reduce((s, m) => s + (m.plannedCashFlowAmount || 0), 0);
+    const flexSectionActual = flexMonthlyAmounts.reduce((s, m) => s + (m.actualAmount || 0), 0);
+
     return SECTIONS.map(sec => ({
         ...sec,
+        ...(sec.variability === 'flexible' && flexSectionBudget !== 0 && {
+            sectionBudget: flexSectionBudget,
+            sectionActual: flexSectionActual,
+        }),
         categories: Object.values(entries).filter(e =>
             sec.type === 'income'
                 ? e.groupType === 'income'
@@ -310,8 +321,8 @@ function buildTable(sections, colors) {
     for (const sec of sections) {
         const isIncome = sec.type === 'income';
         const cats = sortedCats(sec.categories, isIncome);
-        const totalBudget = cats.reduce((s, c) => s + c.budget, 0);
-        const totalActual = cats.reduce((s, c) => s + c.actual, 0);
+        const totalBudget = sec.sectionBudget ?? cats.reduce((s, c) => s + c.budget, 0);
+        const totalActual = sec.sectionActual ?? cats.reduce((s, c) => s + c.actual, 0);
         const totalRem = isIncome ? Math.max(totalBudget - totalActual, 0) : totalBudget - totalActual;
 
         // Group header
