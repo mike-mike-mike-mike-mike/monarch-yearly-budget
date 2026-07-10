@@ -11,6 +11,7 @@ A UserScript that adds a **yearly budget view** to the [Monarch Money](https://w
 - **Organized Categories**: Categories are grouped the same way as the standard budget view (Income, Fixed Expenses, Flexible Expenses, Non-Monthly Expenses) and can be sorted by any column.
 - **Group-level Budgets**: Budget groups with a group-level budget are shown as a single rolled-up row displaying the group total.
   - Support for viewing the individual categories within a group is planned for a future update.
+- **Flexible Section Budget**: When a top-level flexible expenses budget is set, the section header and summary cards reflect that overarching total instead of summing individual category budgets.
 - **Summary Cards**: At-a-glance totals for Income, Budgeted, Spent, Remaining, and Savings.
 - **Persistent State**: View mode and selected year reset to defaults when navigating to the budget page, but are preserved on page refresh.
 - **Dark Mode Support**: Automatically detects and adapts to Monarch Money's dark mode.

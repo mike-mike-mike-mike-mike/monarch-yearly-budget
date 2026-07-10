@@ -1,10 +1,10 @@
 # Changelog
 
-## [1.3.0] - 2026-06-25
+## [1.3.0] - 2026-07-10
 
-### Fixed
+### Added
 
-- **Flexible section budget**: The Flexible Expenses section header now reflects that overarching budget total rather than summing the individual category budgets, which may not be equal.
+- **Flexible section budget**: When a top-level flexible expenses budget is set in Monarch Money, the Flexible Expenses section header and summary cards now reflect that overarching budget total rather than summing individual category budgets.
 
 ## [1.2.0] - 2026-06-15
 
