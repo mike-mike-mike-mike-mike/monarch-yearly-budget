@@ -418,10 +418,13 @@ function buildTable(sections, colors) {
 
 function buildCards(sections, colors) {
     const incomeCats = sections.find(s => s.type === 'income')?.categories ?? [];
-    const expenseCats = sections.filter(s => s.type !== 'income').flatMap(s => s.categories);
     const totalIncome   = incomeCats.reduce((s, c) => s + c.actual, 0);
-    const totalBudgeted = expenseCats.reduce((s, c) => s + c.budget, 0);
-    const totalSpent    = expenseCats.reduce((s, c) => s + c.actual, 0);
+    const totalBudgeted = sections.filter(s => s.type !== 'income').reduce((s, sec) => {
+        return s + (sec.sectionBudget ?? sec.categories.reduce((cs, c) => cs + c.budget, 0));
+    }, 0);
+    const totalSpent    = sections.filter(s => s.type !== 'income').reduce((s, sec) => {
+        return s + (sec.sectionActual ?? sec.categories.reduce((cs, c) => cs + c.actual, 0));
+    }, 0);
     const budgetRem     = totalBudgeted - totalSpent;
     const savings       = Math.max(totalIncome - totalSpent, 0);
 
