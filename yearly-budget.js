@@ -750,7 +750,7 @@ function saveYear() {
 }
 
 function isBudgetPageLoaded() {
-    return !!document.querySelector('[class*="Plan__SectionsContainer"]');
+    return !!document.querySelector('[class*="Plan__SectionsContainer"]') && !!getMonthlyHeader();
 }
 
 async function showYearlyView() {
@@ -785,8 +785,13 @@ async function showYearlyView() {
     createThemeObserver();
 }
 
+function getMonthlyHeader() {
+    return document.querySelector('[role="group"][aria-label="Plan timeframe"]')?.parentElement
+        || document.querySelector('[class*="PlanHeader"]');
+}
+
 function addToggleToMonthlyHeader() {
-    const header = document.querySelector('[class*="PlanHeader"]');
+    const header = getMonthlyHeader();
     if (!header || header.querySelector('.yb-toggle-btn')) return;
     const wrap = document.createElement('span');
     wrap.style.cssText = 'display:inline-flex; gap:8px; margin-left:8px; align-items:center;';
