@@ -49,7 +49,7 @@ function injectStyles() {
         .yb-row-spacer td { padding: 0; height: 2px; }
         .yb-horizontal-divider { border-top: 1px solid ${colors.headerBg}; }
         .yb-row-subtotal td { font-size: 15px; font-weight: 600; height: 30px; padding: 0 8px; }
-        .yb-toggle-btn { font-weight: bold; font-size: 14px; padding: 8px 16px; border: 1px solid ${colors.headerBg}; background: ${colors.bg}; color: ${colors.text}; cursor: pointer; border-radius: 8px; }
+        .yb-toggle-btn { display: inline-flex; align-items: center; gap: 6px; font-weight: bold; font-size: 14px; padding: 8px 16px; border: 1px solid ${colors.headerBg}; background: ${colors.bg}; color: ${colors.text}; cursor: pointer; border-radius: 8px; }
         .yb-toggle-btn.active { background: ${colors.monarchOrange}; color: #fff; border-color: ${colors.monarchOrange}; }
         .yb-toggle-btn:hover { opacity: 0.8; }
         .yb-vertical-divider { height: 16px; width: 1px; background-color: rgb(111, 109, 104); margin: 0px 8px;}
@@ -86,6 +86,11 @@ function injectStyles() {
     `;
     document.head.appendChild(s);
 }
+
+// Gear glyph copied from Monarch's design-system icon set. Inlined as SVG because the
+// icon font this button used to render (U+F137) is no longer shipped, and their icon
+// markup carries hashed class names that churn on every deploy.
+const GEAR_ICON = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" focusable="false" aria-hidden="true"><path d="M11.5845 1.01138C12.9767 0.924244 14.2148 1.32565 14.883 2.62746C15.1706 3.18747 15.1709 3.54124 15.2054 4.14857C15.2423 4.79638 15.6321 5.05615 16.1729 5.31755C16.8728 5.65565 17.2695 5.14394 17.8993 4.95139C19.6704 4.40932 21.1917 5.4928 21.8033 7.12194C22.2808 8.3947 21.8636 9.81856 20.7692 10.6149C20.4495 10.8475 20.1121 10.9373 19.9413 11.3361C19.8171 11.6262 19.8102 12.319 19.9204 12.6128C20.0935 13.0742 20.4726 13.1473 20.8276 13.4179C21.9503 14.2742 22.3173 15.8221 21.7071 17.1017C21.0147 18.5539 19.7528 19.5046 18.0718 19.0976C17.6395 18.9932 17.3902 18.7827 17.015 18.6381C16.5094 18.4433 16.0742 18.6998 15.6638 18.9821C15.0447 19.408 15.2778 19.9915 15.1494 20.621C14.929 21.7006 14.0929 22.5804 13.038 22.8804C12.494 23.035 11.5786 23.0377 11.0297 22.9003C9.8444 22.6033 8.93524 21.5495 8.80224 20.3329C8.75367 19.889 8.86679 19.5425 8.54765 19.1681C8.3902 18.9834 7.79921 18.6365 7.56222 18.5882C7.01979 18.4776 6.6309 18.8793 6.13541 19.0382C4.34807 19.6113 2.79511 18.506 2.18683 16.8553C1.73274 15.624 2.12489 14.2301 3.16216 13.4342C3.53834 13.1454 3.94874 13.0586 4.10163 12.5472C4.1678 12.3256 4.16389 11.6314 4.08631 11.4134C3.91843 10.9412 3.45391 10.8061 3.09566 10.5124C2.10925 9.70434 1.74806 8.35325 2.18292 7.14968C2.7938 5.45919 4.43021 4.35287 6.22929 4.99218C6.76161 5.18114 7.09998 5.59626 7.71706 5.3639C7.8882 5.29928 8.37521 5.01731 8.49973 4.89102C8.887 4.49809 8.74552 4.02293 8.82148 3.53242C9.03499 2.1598 10.1974 1.09819 11.5845 1.01138ZM11.6986 3.00211C11.2438 3.04616 10.8663 3.38524 10.7907 3.83919C10.7578 4.03761 10.7858 4.24223 10.7725 4.44098C10.7102 5.37564 10.1489 6.21926 9.37955 6.71792C8.47659 7.30273 7.63491 7.61538 6.54777 7.31677C5.89777 7.13825 5.3925 6.55246 4.70436 6.9493C4.40609 7.12128 4.0172 7.77268 3.99243 8.11306C3.92984 8.96842 4.80281 9.14922 5.29667 9.66257C6.47964 10.8926 6.45519 13.2433 5.21485 14.4279C4.72099 14.8998 3.94059 15.0359 3.99145 15.8805C4.01264 16.2313 4.41587 16.9003 4.73077 17.0658C5.38435 17.4091 5.76934 16.9535 6.34306 16.7483C7.45954 16.3485 8.37488 16.6425 9.32707 17.2453C10.067 17.7139 10.5831 18.4205 10.735 19.2951C10.8331 19.861 10.6417 20.4004 11.1845 20.8031C11.5427 21.0688 12.3746 21.0734 12.7498 20.8452C13.3464 20.4823 13.1651 19.9292 13.2528 19.3581C13.3979 18.4113 13.9419 17.7009 14.739 17.2071C15.6256 16.6575 16.4442 16.3922 17.4915 16.6924C18.1357 16.8772 18.6325 17.4652 19.3248 17.0335C19.5859 16.8706 19.9696 16.2326 19.998 15.9288C20.0769 15.0764 19.4891 15.0042 18.9731 14.5895C18.3352 14.0764 17.9091 13.2609 17.8625 12.4378C17.7996 11.3305 17.9622 10.3528 18.7919 9.56499C19.3144 9.06894 20.0697 8.97919 19.9986 8.07977C19.9735 7.76093 19.5993 7.14217 19.3284 6.97214C18.6334 6.53647 18.1699 7.09714 17.5333 7.29327C16.4445 7.62843 15.5683 7.32721 14.6536 6.74076C13.9387 6.28257 13.4295 5.59332 13.2714 4.74677C13.1609 4.1551 13.3656 3.58954 12.7961 3.18291C12.505 2.97502 12.0448 2.96849 11.6986 3.00211Z" fill="currentColor"></path><path d="M11.677 8.01612C15.2315 7.76483 17.3442 11.8723 15.0353 14.5992C13.3157 16.6298 10.0999 16.4052 8.65358 14.1831C7.00999 11.6578 8.6777 8.22825 11.677 8.01612ZM11.824 10.0072C10.38 10.1374 9.54611 11.7104 10.2593 12.9841C11.0055 14.3169 12.947 14.3408 13.7199 13.0213C14.5447 11.6131 13.4402 9.86162 11.824 10.0072Z" fill="currentColor"></path></svg>`;
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -553,11 +558,10 @@ function appendSettingsButton(parent) {
     const divider = createVerticalDivider();
     parent.appendChild(divider);
 
-    const colors = getColors();
     const settingsBtn = document.createElement('button');
     settingsBtn.className = 'yb-toggle-btn';
     settingsBtn.setAttribute('aria-label', 'Annual budget settings');
-    settingsBtn.innerHTML = '<span role="img" class="Icon__MonarchIcon-sc-1ja3cr5-0 bBsWwa ButtonIcon-bnt4i8-0 YaRtL monarch-icon"></span><span>Settings</span>';
+    settingsBtn.innerHTML = GEAR_ICON + '<span>Settings</span>';
     settingsBtn.addEventListener('click', toggleSettings);
     parent.appendChild(settingsBtn);
 }
