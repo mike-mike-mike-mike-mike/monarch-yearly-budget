@@ -94,20 +94,46 @@ const GEAR_ICON = `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" w
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
+const LIGHT_MODE_PALETTE = {
+    green:      '#2a7e3b',
+    red:        '#d13415',
+    grey:       '#777573',
+    bg:         '#ffffff',
+    text:       '#22201d',
+    headerBg:   '#e6e4e0',
+    subtotalBg: '#f9f6f3',
+    highlight: 'rgb(0,120,212)',
+    monarchOrange: 'rgb(255, 105, 45)',
+}
+
+const DARK_MODE_PALETTE = {
+    green:      '#3dd68c',
+    red:        '#f9918e',
+    grey:       '#989691',
+    bg:         '#222221',
+    text:       '#ffffff',
+    headerBg:   'rgb(68,68,68)',
+    subtotalBg: 'rgb(48,48,48)',
+    highlight: 'rgb(50,170,240)',
+    monarchOrange: 'rgb(255, 105, 45)',
+}
+
 function getColors() {
-    const root = document.querySelector('[class*=Page__Root]');
-    const dark = root && window.getComputedStyle(root).backgroundColor === 'rgb(25, 25, 24)';
-    return {
-        green:      dark ? '#3dd68c' : '#2a7e3b',
-        red:        dark ? '#f9918e' : '#d13415',
-        grey:       dark ? '#989691' : '#777573',
-        bg:         dark ? '#222221' : '#ffffff',
-        text:       dark ? '#ffffff' : '#22201d',
-        headerBg:   dark ? 'rgb(68,68,68)' : '#e6e4e0',
-        subtotalBg: dark ? 'rgb(48,48,48)' : '#f9f6f3',
-        highlight: dark ? 'rgb(50,170,240)' : 'rgb(0,120,212)',
-        monarchOrange: 'rgb(255, 105, 45)',
-    };
+    try {
+        const root = document.querySelector('.bg-background-page');
+        if (!root) console.debug('Monarch Yearly Budget: root element not found');
+        
+        const bgColor = window.getComputedStyle(root).backgroundColor;
+        const parts = bgColor.match(/[\d.]+/g);
+        const [r, g, b] = parts.map(Number);
+        const dark = r + g + b < 128 * 3;
+        
+        console.debug('background rbg', r, g, b);
+        return dark ? DARK_MODE_PALETTE : LIGHT_MODE_PALETTE;
+    } catch (error) {
+        console.debug('Monarch Yearly Budget: error occured while checking dark mode', error);
+        return LIGHT_MODE_PALETTE;
+    }
 }
 
 // ─── API ──────────────────────────────────────────────────────────────────────
