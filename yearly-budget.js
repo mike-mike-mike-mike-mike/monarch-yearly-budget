@@ -757,9 +757,11 @@ function isBudgetPageLoaded() {
     return !!document.querySelector('[class*="Plan__SectionsContainer"]') && !!getMonthlyHeader();
 }
 
+const SELECTORS_TO_REMOVE = '[data-external-id="header"],[class*="Plan__Container"]';
+
 async function showYearlyView() {
     document.getElementById('yb-container')?.remove();
-    document.querySelectorAll('[class*="PlanHeader"], [class*="Plan__Container"], [class*="Page__ScrollHeaderContainer"]').forEach(el => el.remove());
+    document.querySelectorAll(SELECTORS_TO_REMOVE).forEach(el => el.remove());
 
     const scrollRoot = document.querySelector('[class*="Scroll__Root-sc"]');
     if (!scrollRoot) return;
